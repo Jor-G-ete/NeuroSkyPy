@@ -1,22 +1,25 @@
-# NeuroPy
+# NeuroSkyPy
 
-NeuroPy library written in python to connect, interact and get data from **NeuroSky's MindWave** EEG headset.
+NeuroSkyPy library written in python3.7 to connect, interact, get, save and plot data  from **NeuroSky's MindWave** EEG headset, the first one ( black ).
 
-This library is based on the mindwave mindset communication protocol published by [Neurosky](http:://neurosky.com) and is tested with Neurosky Mindwave EEG headset.
+This library is based on the mindwave mindset communication protocol published by [Neurosky](http:://neurosky.com) and is tested with Neurosky Mindwave EEG headset. Where It's readen the data in hex, after that it's decoded.
 
 ## Installation
 
-1. Download the source distribution (zip file) from [dist directory](https://github.com/lihas/NeuroPy/tree/master/dist) or from [PyPi](https://pypi.python.org/pypi/NeuroPy/0.1)
+1. Download....
 2. Unzip and navigate to the folder containing `setup.py` and other files
 3. Run the following command: `python setup.py install`
 
 ## Usage
 
+A test-script which is used as experiment it's left in order to check and learn how to use the class. 
+The basic steps to use the class are:
 1. Importing the module: `from NeuroPy import NeuroPy`
 2. Initializing: `neuropy = NeuroPy()`
-3. After initializing, if required the callbacks can be set
+3. After initializing, either the callbacks can be set or just extract data from the object as it's done in test-script. 
 4. Then call `neuropy.start()` method, it will start fetching data from mindwave.
-5. To stop call `neuropy.stop()`
+5. To stop call `neuropy.stop()` **WARING: The main proble it's that the thread is not stopped so it will trigger a error. Nevermind you could continue using the script.**
+
 
 ### Obtaining Data from Device 
 
@@ -75,11 +78,11 @@ while True:
 
 ## Python Compatibility
 
-* [Python](http://www.python.com) - v2.7.* and v3.*
+* [Python](http://www.python.com) - v3.7
 
 ### Note
-
-I only have MindWave mobile, and therefore this library is supposed to work on it. I do not promise if it will work on other models. Another library which was suggested to me after I wrote this library can be found [HERE](https://github.com/BarkleyUS/mindwave-python). I have not tested that library, and cannot give any guarantees. More about the difference between the models of MindWave can be found [HERE](http://support.neurosky.com/kb/general-21/what-is-the-difference-between-the-mindset-mindwave-mindwave-mobile-and-xwave).
+This library comes from the libraries [NeuroPy](https://github.com/lihas/NeuroPy) and [mindwave-python](https://github.com/BarkleyUS/mindwave-python). 
+The library is tested and comes with extracted data. 
 
 ### More Information
-[lihashgnis.blogspot.in](http://lihashgnis.blogspot.in/2013/05/neuropy-python-library-for-interfacing.html) - A blog post
+
