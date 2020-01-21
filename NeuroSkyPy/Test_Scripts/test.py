@@ -1,4 +1,4 @@
-from NeuroPy import NeuroPy
+from NeuroSkyPy import NeuroSkyPy
 import time
 import os
 import time
@@ -8,7 +8,7 @@ from tqdm import tqdm
 att = tqdm(total=100, desc="attention")
 med = tqdm(total=100, desc="meditation")
 
-object1=NeuroPy("/dev/ttyUSB0", 115200, '7d55')
+object1=NeuroSkyPy("/dev/ttyUSB0", 115200, '7d55')
 
 volume = [ 50, 50, 50, 50, 50]
 
@@ -41,7 +41,7 @@ def meditation_callback(value):
     return None
 
 def blink_cb(value):
-    print "Blink ", value
+    print("Blink ", value)
 
 #set call back:
 object1.setCallBack("attention",attention_callback)
