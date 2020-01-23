@@ -1,6 +1,9 @@
 from setuptools import setup
 
-version = "1.4"
+version = "1.5"
+
+with open("README.md", "r") as rmd:
+      long_description = rmd.read()
 
 setup(
       name="NeuroSkyPy",
@@ -10,6 +13,8 @@ setup(
       description="Library for interfacing with Neurosky's Mindwave EEG headset",
       author="Jorge Lopez Marcos",
       author_email="jlomar2005@hotmail.com",
+      maintainer="Jorge Lopez Marcos",
+      maintainer_email="jlomar2005@hotmail.com",
       url="https://github.com/Jor-G-ete/NeuroSkyPy",
       download_url="https://github.com/Jor-G-ete/NeuroSkyPy/archive/v"+version+".tar.gz",
       project_urls={
@@ -18,8 +23,9 @@ setup(
       },
       platforms="Windows",
       keywords=["python3.7", "NeuroSky", "graphics", "threads"],
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       install_requires=[
-            'json',
             'numpy',
             'scikit-learn',
             'matplotlib',
