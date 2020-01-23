@@ -1,14 +1,28 @@
 # NeuroSkyPy
 
+[![](https://img.shields.io/pypi/v/neuroskypy.svg)](https://pypi.org/project/NeuroSkyPy/)
+[![](https://img.shields.io/pypi/pyversions/neuroskypy.svg)](https://pypi.org/project/NeuroSkyPy/)
+[![](https://img.shields.io/pypi/l/neuroskypy.svg)](https://github.com/Jor-G-ete/NeuroSkyPy/blob/master/LICENSE)
+[![](https://img.shields.io/pypi/dd/neuroskypy.svg)]()
+[![](https://img.shields.io/github/last-commit/Jor-G-ete/NeuroSkyPy)]()
+[![](https://img.shields.io/github/v/release/Jor-G-ete/NeuroSkyPy)]()
+[![](https://img.shields.io/github/v/tag/Jor-G-ete/NeuroSkyPy)]()
+
 NeuroSkyPy library written in python3.7 to connect, interact, get, save and plot data  from **NeuroSky's MindWave** EEG headset, the first one ( black ).
 
 This library is based on the mindwave mindset communication protocol published by [Neurosky](http:://neurosky.com) and is tested with Neurosky Mindwave EEG headset. Where It's readen the data in hex, after that it's decoded.
 
 ## Installation
 
-1. Download....
+### Source file
+1. Download the source file from github
 2. Unzip and navigate to the folder containing `setup.py` and other files
 3. Run the following command: `python setup.py install`
+
+### Pip
+```python3
+    pip3 install NeuroSkyPy
+```
 
 ## Usage
 
@@ -18,7 +32,7 @@ The basic steps to use the class are:
 2. Initializing: `neuropy = NeuroPy()`
 3. After initializing, either the callbacks can be set or just extract data from the object as it's done in test-script. 
 4. Then call `neuropy.start()` method, it will start fetching data from mindwave.
-5. To stop call `neuropy.stop()` **WARING: The main proble it's that the thread is not stopped so it will trigger a error. Nevermind you could continue using the script.**
+5. To stop call `neuropy.stop()` **WARNING: The main problem it's that the thread is not stopped so it will trigger a error. Nevermind you could continue using the script.**
 
 
 ### Obtaining Data from Device 
