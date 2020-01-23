@@ -14,9 +14,12 @@ def generate_hex_color():
 	Function to generate an hexadecimal color
 	:return:
 	'''
-	random_number = random.randint(0, 16777215)
-	hex_number = str(hex(random_number))
-	hex_number = '#' + hex_number[2:]
+	r = lambda: random.randint(0, 255)
+	hex_number = '#%02X%02X%02X' % (r(), r(), r())
+	# second way:
+	# random_number = random.randint(1118481, 16777215)
+	# hex_number = str(hex(random_number))
+	# hex_number = '#' + hex_number[2:]
 	return hex_number
 
 

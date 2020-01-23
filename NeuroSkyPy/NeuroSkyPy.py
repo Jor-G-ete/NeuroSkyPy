@@ -78,8 +78,8 @@ class NeuroSkyPy(object):
         self.threadRun = True
         self.srl = serial.Serial(self.__port, self.__baudRate)
         # uncomment when the know how to kill a thread
-        # self.__thread = thread.start_new_thread(self.__packetParser,(self.srl,))
-        thread.start_new_thread(self.__packetParser, (self.srl,))
+        self.__thread = thread.start_new_thread(self.__packetParser,(self.srl,))
+        # thread.start_new_thread(self.__packetParser, (self.srl,))
 
     def __packetParser(self, srl):
         "packetParser runs continously in a separate thread to parse packets from mindwave and update the corresponding variables"
@@ -156,12 +156,15 @@ class NeuroSkyPy(object):
                            pass
                        i=i+1
 
+        # when the thread is closed then we exit and close the thread
+        self.srl.close()
+        # raise exception to close the thread
+        thread.exit()
+
     def stop(self):
         "stops packetparser's thread and releases com port i.e disconnects mindwave"
-        self.threadRun=False
-        # Kill the thread
-        self.srl.close()
-        
+        self.threadRun = False
+
     def setCallBack(self, variable_name, callback_function):
         """Setting callback:a call back can be associated with all the above variables so that a function is called when the variable is updated. Syntax: setCallBack("variable",callback_function)
            for eg. to set a callback for attention data the syntax will be setCallBack("attention",callback_function)"""
