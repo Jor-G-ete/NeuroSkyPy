@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = "1.3"
+version = "1.4"
 
 setup(
       name="NeuroSkyPy",
@@ -13,8 +13,8 @@ setup(
       url="https://github.com/Jor-G-ete/NeuroSkyPy",
       download_url="https://github.com/Jor-G-ete/NeuroSkyPy/archive/v"+version+".tar.gz",
       project_urls={
-            "Documentation":"",
-            "Source Code":""
+            "Documentation":"https://github.com/Jor-G-ete/NeuroSkyPy",
+            "Source Code":"https://github.com/Jor-G-ete/NeuroSkyPy/blob/master/NeuroSkyPy/NeuroSkyPy.py"
       },
       platforms="Windows",
       keywords=["python3.7", "NeuroSky", "graphics", "threads"],
