@@ -32,7 +32,7 @@ The basic steps to use the class are:
 2. Initializing: `neuropy = NeuroPy()`
 3. After initializing, either the callbacks can be set or just extract data from the object as it's done in test-script. 
 4. Then call `neuropy.start()` method, it will start fetching data from mindwave.
-5. To stop call `neuropy.stop()` **WARNING: The main problem it's that the thread is not stopped so it will trigger a error. Nevermind you could continue using the script.**
+5. To stop call `neuropy.stop()`. 
 
 
 ### Obtaining Data from Device 
