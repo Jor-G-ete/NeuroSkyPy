@@ -29,9 +29,11 @@
 import serial
 import _thread as thread  # Modified thread for _thread due to it's the new library in python 3.7
 from datetime import datetime
+import pandas as pd
 
 class NeuroSkyPy(object):
-    """NeuroSkyPy libraby, to get data from neurosky mindwave.
+    """NeuroSkyPy libraby, to get data from Neurosky Mindwave Mobile.
+
     Initialising: object1=NeuroSkyPy("COM6",57600) #windows
     After initialising , if required the callbacks must be set
     then using the start method the library will start fetching data from mindwave
@@ -46,22 +48,23 @@ class NeuroSkyPy(object):
     
     Setting callback:a call back can be associated with all the above variables so that a function is called when the variable is updated. Syntax: setCallBack("variable",callback_function)
     for eg.to set a callback for attention data the syntax will be setCallBack("attention",callback_function)"""
-    __attention = 0
-    __meditation = 0
-    __rawValue = 0
-    __delta = 0
-    __theta = 0
-    __lowAlpha = 0
-    __highAlpha = 0
-    __lowBeta = 0
-    __highBeta = 0
-    __lowGamma = 0
-    __midGamma = 0
-    __poorSignal = 0
-    __blinkStrength = 0
+
+    # Private properties
     __port = None
     __baudRate = None
     __thread_id = None
+    __df_saved_data = pd.DataFrame(columns=["epoch", "poorSignalHex", "poorSignal", "attentionHex", "attention",
+                                            "meditationHex", "meditation", "blinkStrengthHex", "blinkStrength",
+                                            "rawValueHex0", "rawValueHex1", "rawValue",
+                                            "deltaHex0","deltaHex1","deltaHex2", "delta",
+                                            "thetaHex0","thetaHex1","thetaHex2", "theta",
+                                            "lowAlphaHex0","lowAlphaHex1","lowAlphaHex2", "lowAlpha",
+                                            "highAlphaHex0", "highAlphaHex1", "highAlphaHex2", "highAlpha",
+                                            "lowBetaHex0","lowBetaHex1","lowBetaHex2", "lowBeta",
+                                            "highBetaHex0","highBetaHex1","highBetaHex2", "highBeta",
+                                            "lowGammaHex0","lowGammaHex1","lowGammaHex2", "lowGamma",
+                                            "midGammaHex0","midGammaHex1","midGammaHex2", "midGamma"])
+    # Public properties
     srl = None
     threadRun = True  # controls the running of thread
     callBacksDictionary = {}  # keep a track of all callbacks
@@ -72,277 +75,163 @@ class NeuroSkyPy(object):
         
     def __del__(self):
         self.srl.close()
-    
-    def start(self):
-        """starts packetparser in a separate thread"""
-        self.threadRun = True
-        self.srl = serial.Serial(self.__port, self.__baudRate)
-        # uncomment when the know how to kill a thread
-        self.__thread = thread.start_new_thread(self.__packetParser,(self.srl,))
-        # thread.start_new_thread(self.__packetParser, (self.srl,))
+
+    def __payload_parser(self, payload):
+        """
+        Function to parse the payload. For more info about this read:
+            http://developer.neurosky.com/docs/lib/exe/fetch.php?media=mindset_communications_protocol.pdf
+        Depending on the Data we want to extract we will have to look one or two or three bytes ahead and compute its value
+
+        Params:
+        ------
+        param: payload: List -> Where the payload bytes are stored and need to be converted and analyzed
+
+        Returns:
+        --------
+        return: payload: Dict > Payload bytes parsed and ready to be saved
+
+        """
+        payload_parsed = {}
+        # Create a counter
+        i = 0
+        while i < len(payload):
+            # PoorSignal
+            if payload[i] == '02':
+                i += 1
+                payload_parsed["poorSignalHex"] = payload[i]
+                payload_parsed["poorSignal"] = int(payload[i], 16)
+            # Attention
+            elif payload[i] == '04':
+                i += 1
+                payload_parsed["attentionHex"] = payload[i]
+                payload_parsed["attention"] = int(payload[i], 16)
+            # Meditation
+            elif payload[i] == '05':
+                i += 1
+                payload_parsed["meditationHex"] = payload[i]
+                payload_parsed["meditation"] = int(payload[i], 16)
+            # Blink Strength
+            elif payload[i] == '16':
+                i += 1
+                payload_parsed["blinkStrengthHex"] = payload[i]
+                payload_parsed["blinkStrength"] = int(payload[i], 16)
+            # Raw Value
+            elif payload[i] == '80':
+                # This is a 3 byte value. The first byte shows the length of the raw wavelength. It always be 2
+                i += 1
+                # That's why we move to the next byte
+                i += 1
+                byte0 = payload[i]
+                # Then we extract the next byte
+                i += 1
+                byte1 = payload[i]
+                # Then we perform the operation Value[0]<<8 | value[1]
+                payload_parsed["rawValueHex0"] = byte0
+                payload_parsed["rawValueHex1"] = byte1
+                payload_parsed["rawValue"] = (int(byte0, 16) << 8) | int(byte1, 16)
+                # In case we want to use arithmetic operations we will have to use the following formula
+                # self.rawValue = byte0*256 + byte1
+                # if self.rawValue>32768: self.rawValue=self.rawValue-65536
+            # ASIC_EEG_POWER
+            elif payload[i] == '83':
+                # We discard the length of the payload
+                i += 1
+                # Each wavelength has 3 bytes. That's why we will apply << 16  to the first byte and << 8 to the second
+                # with that we will create a decimal number for those 3 bytes
+                # The arithmetic operation is:  self.delta=val0*65536+val1*256+int(payload[i],16)
+                # Run over the waves and set its value
+                for wave in ["delta", "theta", "lowAlpha", "highAlpha", "lowBeta", "highBeta", "lowGamma", "midGamma"]:
+                    # Delta:
+                    i += 1
+                    byte0 = payload[i]
+                    i += 1
+                    byte1 = payload[i]
+                    i += 1
+                    byte2 = payload[i]
+                    payload_parsed[wave+"Hex0"] = byte0
+                    payload_parsed[wave+"Hex1"] = byte1
+                    payload_parsed[wave+"Hex2"] = byte2
+                    payload_parsed[wave] = (int(byte0, 16) << 16) |(int(byte1, 16) << 8) | int(byte2, 16)
+
+            # Read the next byte
+            i += 1
+        # Return the payload parsed
+        return payload_parsed
 
     def __packetParser(self, srl):
+        """
+        Function used by the thread. This function reads packets from
+        """
         "packetParser runs continously in a separate thread to parse packets from mindwave and update the corresponding variables"
         # if not srl.isOpen(): srl.open()
-        while self.threadRun:
-            p1 = srl.read(1).hex()  # read first 2 packets
-            p2 = srl.read(1).hex()
-            while p1 != 'aa' or p2 != 'aa':
-                p1 = p2
-                p2 = srl.read(1).hex()
+        while self.threadRun and srl.isOpen():
+            # read the first two bytes of SYNC
+            sync1 = srl.read(1).hex()
+            sync2 = srl.read(1).hex()
+            # loop until sync1 and sync2 are both 0xAA
+            while sync1 != 'aa' or sync2 != 'aa':
+                sync1 = sync2
+                sync2 = srl.read(1).hex()
             else:
-                #a valid packet is available
-                payload=[]
-                checksum=0;
-                payloadLength=int(srl.read(1).hex(),16)
-                for i in range(payloadLength):
-                    tempPacket=srl.read(1).hex()
-                    payload.append(tempPacket)
-                    checksum+=int(tempPacket,16)
-                checksum=~checksum&0x000000ff
-                if checksum==int(srl.read(1).hex(),16):
-                   i=0
-                   while i<payloadLength:
-                       code=payload[i]
-                       if(code=='02'):#poorSignal
-                           i=i+1; self.poorSignal=int(payload[i],16)
-                       elif(code=='04'):#attention
-                           i=i+1; self.attention=int(payload[i],16)
-                       elif(code=='05'):#meditation
-                           i=i+1; self.meditation=int(payload[i],16)
-                       elif(code=='16'):#blink strength
-                           i=i+1; self.blinkStrength=int(payload[i],16)
-                       elif(code=='80'):#raw value
-                           i=i+1 #for length/it is not used since length =1 byte long and always=2
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; self.rawValue=val0*256+int(payload[i],16)
-                           if self.rawValue>32768 :
-                               self.rawValue=self.rawValue-65536
-                       elif(code=='83'):#ASIC_EEG_POWER
-                           i=i+1;#for length/it is not used since length =1 byte long and always=2
-                           #delta:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.delta=val0*65536+val1*256+int(payload[i],16)
-                           #theta:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.theta=val0*65536+val1*256+int(payload[i],16)
-                           #lowAlpha:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.lowAlpha=val0*65536+val1*256+int(payload[i],16)
-                           #highAlpha:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.highAlpha=val0*65536+val1*256+int(payload[i],16)
-                           #lowBeta:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.lowBeta=val0*65536+val1*256+int(payload[i],16)
-                           #highBeta:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.highBeta=val0*65536+val1*256+int(payload[i],16)
-                           #lowGamma:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.lowGamma=val0*65536+val1*256+int(payload[i],16)
-                           #midGamma:
-                           i=i+1; val0=int(payload[i],16)
-                           i=i+1; val1=int(payload[i],16)
-                           i=i+1; self.midGamma=val0*65536+val1*256+int(payload[i],16)
-                       else:
-                           pass
-                       i=i+1
-
+                # SYNC Done
+                # Declare the variables
+                payload = []
+                checksum = 0
+                # obtain the length of the payload, convert it from hex ( mod-16 ) to int ( mod-10 )
+                payload_length = int(srl.read(1).hex(), 16)
+                # In case payload is bigger than 170 bytes discard the packet, in case it's 170 ( means SYNC) so we read it again
+                if payload_length == 170: payload_length = int(srl.read(1).hex(),16)
+                elif payload_length > 170: continue
+                # Run over the payload
+                for i in range(payload_length):
+                    temp_payload = srl.read(1).hex()
+                    # Save the payload to posterior analysis
+                    payload.append(temp_payload)
+                    # Add the values to compute the checksum later
+                    checksum += int(temp_payload, 16)
+                # compute the checksum, inverting the last 8 bits ( or the last byte )
+                checksum =~ checksum & 0x000000ff
+                # Check if the checksum match with the computed checksum
+                if checksum != int(): continue
+                # parse the payload
+                payload_parsed = self.__payload_parser(payload)
+            # Save the data inside a DataFrame of pandas
+            # Extract and create a timestamp with Hours / Minutes / Seconds / MiliSeconds
+            payload_parsed["epoch"] = datetime.now().strftime("%H%M%S%f")
+            # Save it
+            self.__df_saved_data.append(payload_parsed, ignore_index=True)
         # when the thread is closed then we exit and close the thread
         self.srl.close()
         # raise exception to close the thread
         thread.exit()
 
+    def start(self):
+        """
+        Starts __packetParser in a separate thread and fix the data of the Thread in the Object private properties
+
+        Params:
+        -------
+        param: Self -> Main NeuroSkyPy Objetct
+
+        Return: Nothing
+        """
+        # Declare that the thread is running
+        self.threadRun = True
+        # Open and collect data from the Serial Port
+        self.srl = serial.Serial(self.__port, self.__baudRate)
+        # uncomment when the know how to kill a thread
+
+        # Save the thread id
+        self.__thread_id = thread.start_new_thread(self.__packetParser, (self.srl,))
+
     def stop(self):
-        "stops packetparser's thread and releases com port i.e disconnects mindwave"
+        """
+        Stops the __packetParser thread
+
+        Params:
+        -------
+        param: Self -> Main NeuroSkyPy ObjetctM
+
+        Return: Nothing
+        """
         self.threadRun = False
-
-    def setCallBack(self, variable_name, callback_function):
-        """Setting callback:a call back can be associated with all the above variables so that a function is called when the variable is updated. Syntax: setCallBack("variable",callback_function)
-           for eg. to set a callback for attention data the syntax will be setCallBack("attention",callback_function)"""
-        self.callBacksDictionary[variable_name]=callback_function
-        self.time_value[variable_name]={}
-
-    def getTimeTaken(self):
-        return self.time_value
-
-    #setting getters and setters for all variables
-    
-    #attention
-    @property
-    def attention(self):
-        "Get value for attention"
-        return self.__attention
-    @attention.setter
-    def attention(self,value):
-        # extract actual time
-        at_time_taken = datetime.now().strftime("%H%m%S")
-        self.__attention=value
-        if "attetion" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["attention"](self.__attention)
-            self.time_value["attention"][str(at_time_taken)] = self.__attention
-
-    #meditation
-    @property
-    def meditation(self):
-        "Get value for meditation"
-        return self.__meditation
-    @meditation.setter
-    def meditation(self,value):
-        md_time_taken = datetime.now().strftime("%H%m%S")
-        self.__meditation=value
-        if "meditation" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["meditation"](self.__meditation)
-            self.time_value["meditation"][str(md_time_taken)] = self.__meditation
-
-    #rawValue
-    @property
-    def rawValue(self):
-        "Get value for rawValue"
-        return self.__rawValue
-    @rawValue.setter
-    def rawValue(self,value):
-        rw_time_taken = datetime.now().strftime("%H%m%S")
-        self.__rawValue=value
-        if "rawValue" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["rawValue"](self.__rawValue)
-            self.time_value["rawValue"][str(rw_time_taken)] = self.__rawValue
-
-    #delta
-    @property
-    def delta(self):
-        "Get value for delta"
-        return self.__delta
-    @delta.setter
-    def delta(self,value):
-        dl_time_taken = datetime.now().strftime("%H%m%S")
-        self.__delta=value
-        if "delta" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["delta"](self.__delta)
-            self.time_value["delta"][str(dl_time_taken)] = self.__delta
-
-    #theta
-    @property
-    def theta(self):
-        "Get value for theta"
-        return self.__theta
-    @theta.setter
-    def theta(self,value):
-        tt_time_taken = datetime.now().strftime("%H%m%S")
-        self.__theta=value
-        if "theta" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["theta"](self.__theta)
-            self.time_value["theta"][str(tt_time_taken)] = self.__theta
-
-    #lowAlpha
-    @property
-    def lowAlpha(self):
-        "Get value for lowAlpha"
-        return self.__lowAlpha
-    @lowAlpha.setter
-    def lowAlpha(self,value):
-        la_time_taken = datetime.now().strftime("%H%m%S")
-        self.__lowAlpha=value
-        if "lowAlpha" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["lowAlpha"](self.__lowAlpha)
-            self.time_value["lowAlpha"][str(la_time_taken)] = self.__lowAlpha
-
-    #highAlpha
-    @property
-    def highAlpha(self):
-        "Get value for highAlpha"
-        return self.__highAlpha
-    @highAlpha.setter
-    def highAlpha(self,value):
-        ha_time_taken = datetime.now().strftime("%H%m%S")
-        self.__highAlpha=value
-        if "highAlpha" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["highAlpha"](self.__highAlpha)
-            self.time_value["highAlpha"][str(ha_time_taken)] = self.__highAlpha
-
-
-    #lowBeta
-    @property
-    def lowBeta(self):
-        "Get value for lowBeta"
-        return self.__lowBeta
-    @lowBeta.setter
-    def lowBeta(self,value):
-        lb_time_taken = datetime.now().strftime("%H%m%S")
-        self.__lowBeta=value
-        if "lowBeta" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["lowBeta"](self.__lowBeta)
-            self.time_value["lowBeta"][str(lb_time_taken)] = self.__lowBeta
-
-    #highBeta
-    @property
-    def highBeta(self):
-        "Get value for highBeta"
-        return self.__highBeta
-    @highBeta.setter
-    def highBeta(self,value):
-        hb_time_taken = datetime.now().strftime("%H%m%S")
-        self.__highBeta=value
-        if "highBeta" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["highBeta"](self.__highBeta)
-            self.time_value["highBeta"][str(hb_time_taken)] = self.__highBeta
-
-    #lowGamma
-    @property
-    def lowGamma(self):
-        "Get value for lowGamma"
-        return self.__lowGamma
-    @lowGamma.setter
-    def lowGamma(self,value):
-        lg_time_taken = datetime.now().strftime("%H%m%S")
-        self.__lowGamma=value
-        if "lowGamma" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["lowGamma"](self.__lowGamma)
-            self.time_value["lowGamma"][str(lg_time_taken)] = self.__lowGamma
-
-    #midGamma
-    @property
-    def midGamma(self):
-        "Get value for midGamma"
-        return self.__midGamma
-    @midGamma.setter
-    def midGamma(self,value):
-        mg_time_taken = datetime.now().strftime("%H%m%S")
-        self.__midGamma=value
-        if "midGamma" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["midGamma"](self.__midGamma)
-            self.time_value["midGamma"][str(mg_time_taken)] = self.__midGamma
-
-    #poorSignal
-    @property
-    def poorSignal(self):
-        "Get value for poorSignal"
-        return self.__poorSignal
-    @poorSignal.setter
-    def poorSignal(self,value):
-        ps_time_taken = datetime.now().strftime("%H%m%S")
-        self.__poorSignal=value
-        if "poorSignal" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["poorSignal"](self.__poorSignal)
-            self.time_value["poorSignal"][str(ps_time_taken)] = self.__poorSignal
-
-    #blinkStrength
-    @property
-    def blinkStrength(self):
-        "Get value for blinkStrength"
-        return self.__blinkStrength
-    @blinkStrength.setter
-    def blinkStrength(self,value):
-        bs_time_taken = datetime.now().strftime("%H%m%S")
-        self.__blinkStrength=value
-        if "blinkStrength" in self.callBacksDictionary.keys(): #if callback has been set, execute the function
-            self.callBacksDictionary["blinkStrength"](self.__blinkStrength)
-            self.time_value["blinkStrength"][str(bs_time_taken)] = self.__blinkStrength
