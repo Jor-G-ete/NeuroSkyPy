@@ -51,7 +51,7 @@ def save_session(dic, config):
 
 def plot_graphics(data, var_names, config, save_img=False, transparent=False):
 	'''
-	Draw the graphics and also store in its rigthful folder
+	Draw the graphics and also store in its rightful folder
 	:param data:
 	:param var_names:
 	:param config:
@@ -103,6 +103,8 @@ def plot_graphics(data, var_names, config, save_img=False, transparent=False):
 		if save_img: plt.savefig(path_to_save+var_names[idx]+".png", transparent=transparent)
 		plt.show()
 		plt.clf()
+
+
 
 
 if __name__ == "__main__":

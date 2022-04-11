@@ -1,38 +1,41 @@
-##Copyright (c) 2020, Jorge Lopez Marcos
-##
-##All rights reserved.
-##
-##Redistribution and use in source and binary forms, with or without modification,
-##are permitted provided that the following conditions are met:
-##
-##    * Redistributions of source code must retain the above copyright notice,
-##      this list of conditions and the following disclaimer.
-##    * Redistributions in binary form must reproduce the above copyright notice,
-##      this list of conditions and the following disclaimer in the documentation
-##      and/or other materials provided with the distribution.
-##    * Neither the name of NeuroPy nor the names of its contributors
-##      may be used to endorse or promote products derived from this software
-##      without specific prior written permission.
-##
-##THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-##"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-##LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-##A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-##CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-##EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-##PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-##PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-##LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-##NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-##SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# #Copyright (c) 2020, Jorge Lopez Marcos
+# #
+# #All rights reserved.
+# #
+# #Redistribution and use in source and binary forms, with or without modification,
+# #are permitted provided that the following conditions are met:
+# #
+# #    * Redistributions of source code must retain the above copyright notice,
+# #      this list of conditions and the following disclaimer.
+# #    * Redistributions in binary form must reproduce the above copyright notice,
+# #      this list of conditions and the following disclaimer in the documentation
+# #      and/or other materials provided with the distribution.
+# #    * Neither the name of NeuroSkyPy nor the names of its contributors
+# #      may be used to endorse or promote products derived from this software
+# #      without specific prior written permission.
+# #
+# #THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# #"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# #LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# #A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# #CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# #EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# #PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# #PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# #LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# #NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# #SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import serial
 import _thread as thread  # Modified thread for _thread due to it's the new library in python 3.7
 from datetime import datetime
 import pandas as pd
+from threading import Thread
+from time import sleep
+
 
 class NeuroSkyPy(object):
-    """NeuroSkyPy libraby, to get data from Neurosky Mindwave Mobile.
+    """NeuroSkyPy library, to get data from Neurosky Mindwave Mobile.
 
     Initialising: object1=NeuroSkyPy("COM6",57600) #windows
     After initialising , if required the callbacks must be set
@@ -44,37 +47,54 @@ class NeuroSkyPy(object):
     The data from the device can be obtained using either of the following methods or both of them together:
     
     Obtaining value: variable1=object1.attention #to get value of attention
-    #other variables: attention,meditation,rawValue,delta,theta,lowAlpha,highAlpha,lowBeta,highBeta,lowGamma,midGamma, poorSignal and blinkStrength
+    #other variables: attention,meditation,rawValue,delta,theta,lowAlpha,highAlpha,lowBeta,highBeta,lowGamma,midGamma,
+        poorSignal and blinkStrength
     
-    Setting callback:a call back can be associated with all the above variables so that a function is called when the variable is updated. Syntax: setCallBack("variable",callback_function)
+    Setting callback:a call back can be associated with all the above variables so that a function is called when the
+    variable is updated. Syntax: setCallBack("variable",callback_function)
     for eg.to set a callback for attention data the syntax will be setCallBack("attention",callback_function)"""
 
     # Private properties
     __port = None
     __baudRate = None
     __thread_id = None
+    __thread_handler = None
+    __thread_run = None
+    __dev_id = None
+    __srl = None
+    __connected = False
+    __sample_time = None
+    __packet_data = []
     __df_saved_data = pd.DataFrame(columns=["epoch", "poorSignalHex", "poorSignal", "attentionHex", "attention",
                                             "meditationHex", "meditation", "blinkStrengthHex", "blinkStrength",
                                             "rawValueHex0", "rawValueHex1", "rawValue",
-                                            "deltaHex0","deltaHex1","deltaHex2", "delta",
-                                            "thetaHex0","thetaHex1","thetaHex2", "theta",
-                                            "lowAlphaHex0","lowAlphaHex1","lowAlphaHex2", "lowAlpha",
+                                            "deltaHex0", "deltaHex1", "deltaHex2", "delta",
+                                            "thetaHex0", "thetaHex1", "thetaHex2", "theta",
+                                            "lowAlphaHex0", "lowAlphaHex1", "lowAlphaHex2", "lowAlpha",
                                             "highAlphaHex0", "highAlphaHex1", "highAlphaHex2", "highAlpha",
-                                            "lowBetaHex0","lowBetaHex1","lowBetaHex2", "lowBeta",
-                                            "highBetaHex0","highBetaHex1","highBetaHex2", "highBeta",
-                                            "lowGammaHex0","lowGammaHex1","lowGammaHex2", "lowGamma",
-                                            "midGammaHex0","midGammaHex1","midGammaHex2", "midGamma"])
-    # Public properties
-    srl = None
-    threadRun = True  # controls the running of thread
-    callBacksDictionary = {}  # keep a track of all callbacks
-    time_value = {}  # keep time and value of the different values
+                                            "lowBetaHex0", "lowBetaHex1", "lowBetaHex2", "lowBeta",
+                                            "highBetaHex0", "highBetaHex1", "highBetaHex2", "highBeta",
+                                            "lowGammaHex0", "lowGammaHex1", "lowGammaHex2", "lowGamma",
+                                            "midGammaHex0", "midGammaHex1", "midGammaHex2", "midGamma"])
 
-    def __init__(self, port, baudRate=57600):
-        self.__port, self.__baudRate = port, baudRate
+    def __init__(self, port, baud_rate=57600, sample_time=0.2, dev_id=None):
+        self.__port, self.__baudRate, self.__sample_time, self.__dev_id = port, baud_rate, sample_time, dev_id
         
     def __del__(self):
-        self.srl.close()
+        self.__srl.close()
+        self.stop()
+
+    def __connect__(self):
+        # In case we are in windows
+        if not self.__dev_id:
+            self.__connected = True
+        else:
+            # TODO: Needs to be finished
+            #  self.__srl.write(''.join([CONNECT, self.__devid.decode('hex')]))
+            self.__srl.write("".join([]))
+
+    def __disconnect__(self):
+        self.__srl.write("\xc1")
 
     def __payload_parser(self, payload):
         """
@@ -95,8 +115,17 @@ class NeuroSkyPy(object):
         # Create a counter
         i = 0
         while i < len(payload):
+            # Check connection
+            if payload[i] == 'd0': self.__connected = True
+            # Not Connected or Disconnected -> Reconnect
+            if payload[i] == 'd1' or payload[i] == 'd2': self.__connect__()
+            # Denied
+            if payload[i] == 'd3': return
+            # Idle
+            if payload[i] == 'd4':
+                if not payload[2] and not self.__connected: self.__connect__()
             # PoorSignal
-            if payload[i] == '02':
+            elif payload[i] == '02':
                 i += 1
                 payload_parsed["poorSignalHex"] = payload[i]
                 payload_parsed["poorSignal"] = int(payload[i], 16)
@@ -151,57 +180,61 @@ class NeuroSkyPy(object):
                     payload_parsed[wave+"Hex0"] = byte0
                     payload_parsed[wave+"Hex1"] = byte1
                     payload_parsed[wave+"Hex2"] = byte2
-                    payload_parsed[wave] = (int(byte0, 16) << 16) |(int(byte1, 16) << 8) | int(byte2, 16)
+                    payload_parsed[wave] = (int(byte0, 16) << 16) | (int(byte1, 16) << 8) | int(byte2, 16)
 
             # Read the next byte
             i += 1
         # Return the payload parsed
         return payload_parsed
 
-    def __packetParser(self, srl):
+    def __packet_parser(self):
         """
         Function used by the thread. This function reads packets from
         """
-        "packetParser runs continously in a separate thread to parse packets from mindwave and update the corresponding variables"
         # if not srl.isOpen(): srl.open()
-        while self.threadRun and srl.isOpen():
+        while self.__thread_run and self.__srl.isOpen():
+            # Put the thread to sleep
+            # sleep(self.__sample_time)
             # read the first two bytes of SYNC
-            sync1 = srl.read(1).hex()
-            sync2 = srl.read(1).hex()
+            sync1 = self.__srl.read(1).hex()
+            sync2 = self.__srl.read(1).hex()
             # loop until sync1 and sync2 are both 0xAA
             while sync1 != 'aa' or sync2 != 'aa':
                 sync1 = sync2
-                sync2 = srl.read(1).hex()
-            else:
-                # SYNC Done
-                # Declare the variables
-                payload = []
-                checksum = 0
-                # obtain the length of the payload, convert it from hex ( mod-16 ) to int ( mod-10 )
-                payload_length = int(srl.read(1).hex(), 16)
-                # In case payload is bigger than 170 bytes discard the packet, in case it's 170 ( means SYNC) so we read it again
-                if payload_length == 170: payload_length = int(srl.read(1).hex(),16)
-                elif payload_length > 170: continue
-                # Run over the payload
-                for i in range(payload_length):
-                    temp_payload = srl.read(1).hex()
-                    # Save the payload to posterior analysis
-                    payload.append(temp_payload)
-                    # Add the values to compute the checksum later
-                    checksum += int(temp_payload, 16)
-                # compute the checksum, inverting the last 8 bits ( or the last byte )
-                checksum =~ checksum & 0x000000ff
-                # Check if the checksum match with the computed checksum
-                if checksum != int(): continue
-                # parse the payload
-                payload_parsed = self.__payload_parser(payload)
+                sync2 = self.__srl.read(1).hex()
+            # SYNC DONE
+            # Declare the payload and the payload parsed
+            payload = []
+            payload_parsed = {}
+            # Declare the checksum to verify the content of the package
+            checksum = 0
+            # Obtain the length of the payload, convert it from hex ( mod-16 ) to int ( mod-10 )
+            payload_length = int(self.__srl.read(1).hex(), 16)
+            # If payload is bigger than 170 bytes discard the packet, in case it's 170 ( means SYNC) so we read it again
+            # if payload_length == 170 : payload_length = int(srl.read(1).hex(),16)
+            # elif payload_length > 170 : continue
+            # Run over the payload
+            for i in range(payload_length):
+                temp_payload = self.__srl.read(1).hex()
+                # Save the payload to posterior analysis
+                payload.append(temp_payload)
+                # Add the values to compute the checksum later
+                checksum += int(temp_payload, 16)
+            # Save the packet
+            self.__packet_data.append([sync1, sync2, payload_length, payload])
+            # compute the checksum, inverting the last 8 bits ( or the last byte )
+            checksum =~ checksum & 0x000000ff
+            # Check if the checksum match with the computed checksum
+            if checksum != int(self.__srl.read(1).hex(), 16): continue
+            # parse the payload
+            payload_parsed = self.__payload_parser(payload)
             # Save the data inside a DataFrame of pandas
             # Extract and create a timestamp with Hours / Minutes / Seconds / MiliSeconds
             payload_parsed["epoch"] = datetime.now().strftime("%H%M%S%f")
             # Save it
-            self.__df_saved_data.append(payload_parsed, ignore_index=True)
+            self.__df_saved_data = self.__df_saved_data.append(payload_parsed, ignore_index=True)
         # when the thread is closed then we exit and close the thread
-        self.srl.close()
+        self.__srl.close()
         # raise exception to close the thread
         thread.exit()
 
@@ -211,18 +244,25 @@ class NeuroSkyPy(object):
 
         Params:
         -------
-        param: Self -> Main NeuroSkyPy Objetct
+        param: Self -> Main NeuroSkyPy Object
 
         Return: Nothing
         """
         # Declare that the thread is running
-        self.threadRun = True
+        if self.__thread_run: return
         # Open and collect data from the Serial Port
-        self.srl = serial.Serial(self.__port, self.__baudRate)
-        # uncomment when the know how to kill a thread
+        if not self.__srl: self.__srl = serial.Serial(self.__port, self.__baudRate)
 
-        # Save the thread id
-        self.__thread_id = thread.start_new_thread(self.__packetParser, (self.srl,))
+        # Flush everything inside the serial
+        self.__srl.flushInput()
+
+        # Connect in case we are in linux
+        if self.__dev_id: self.__connect__()
+
+        # Save the thread in a variable
+        self.__thread_handler = Thread(target=self.__packet_parser, args=())
+        self.__thread_run = True
+        self.__thread_handler.start()
 
     def stop(self):
         """
@@ -230,8 +270,12 @@ class NeuroSkyPy(object):
 
         Params:
         -------
-        param: Self -> Main NeuroSkyPy ObjetctM
+        param: Self -> Main NeuroSkyPy Object
 
-        Return: Nothing
+        Return: Pandas Dataframe -> Returns the data saved in a dataframe
         """
-        self.threadRun = False
+        # stop the thread
+        self.__thread_run = False
+        self.__thread_handler.join()
+        # return the data
+        return self.__df_saved_data, self.__packet_data

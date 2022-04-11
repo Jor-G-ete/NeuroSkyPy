@@ -1,0 +1,31 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="17">
+            <item index="0" class="java.lang.String" itemvalue="marshmallow-sqlalchemy" />
+            <item index="1" class="java.lang.String" itemvalue="oauthlib" />
+            <item index="2" class="java.lang.String" itemvalue="psycopg2-binary" />
+            <item index="3" class="java.lang.String" itemvalue="marshmallow" />
+            <item index="4" class="java.lang.String" itemvalue="marshmallow-oneofschema" />
+            <item index="5" class="java.lang.String" itemvalue="requests" />
+            <item index="6" class="java.lang.String" itemvalue="requests_oauthlib" />
+            <item index="7" class="java.lang.String" itemvalue="sqlalchemy" />
+            <item index="8" class="java.lang.String" itemvalue="redis" />
+            <item index="9" class="java.lang.String" itemvalue="ujson" />
+            <item index="10" class="java.lang.String" itemvalue="pycountry" />
+            <item index="11" class="java.lang.String" itemvalue="pandas" />
+            <item index="12" class="java.lang.String" itemvalue="six" />
+            <item index="13" class="java.lang.String" itemvalue="SQLAlchemy" />
+            <item index="14" class="java.lang.String" itemvalue="GeoAlchemy2" />
+            <item index="15" class="java.lang.String" itemvalue="numpy" />
+            <item index="16" class="java.lang.String" itemvalue="wurlitzer" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
